@@ -159,19 +159,27 @@ class BackupRestorer:
             Path to backup directory or None if failed
         """
         try:
-            # Create MDMB directory
-            mdmb_dir = self.prepare_mdmb_directory(temp_dir)
+            # Create MDMB directory (this will be the parent backup directory)
+            mdmb_parent_dir = self.prepare_mdmb_directory(temp_dir)
             
-            # Extract backup files
-            if not self.extract_backup_archive(archive_path, mdmb_dir):
+            # Create MDMB subdirectory inside (this is the UDID directory)
+            # idevicebackup2 expects: backup_dir/UDID/Info.plist
+            # We use "MDMB" as the UDID (same as macOS version)
+            mdmb_backup_dir = os.path.join(mdmb_parent_dir, "MDMB")
+            os.makedirs(mdmb_backup_dir, exist_ok=True)
+            print(f"[INFO] Created backup UDID directory: {mdmb_backup_dir}")
+            
+            # Extract backup files into the UDID subdirectory
+            if not self.extract_backup_archive(archive_path, mdmb_backup_dir):
                 return None
             
-            # Copy customized plists
-            shutil.copy2(info_plist_path, os.path.join(mdmb_dir, "Info.plist"))
-            shutil.copy2(manifest_plist_path, os.path.join(mdmb_dir, "Manifest.plist"))
+            # Copy customized plists into the UDID subdirectory
+            shutil.copy2(info_plist_path, os.path.join(mdmb_backup_dir, "Info.plist"))
+            shutil.copy2(manifest_plist_path, os.path.join(mdmb_backup_dir, "Manifest.plist"))
             
             print("[SUCCESS] Backup structure created")
-            return mdmb_dir
+            # Return the parent directory (not the UDID subdirectory)
+            return mdmb_parent_dir
             
         except Exception as e:
             print(f"[ERROR] Failed to create backup structure: {e}")
