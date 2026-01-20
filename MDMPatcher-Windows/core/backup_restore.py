@@ -145,6 +145,37 @@ class BackupRestorer:
             print(f"[ERROR] Failed to restore backup: {e}")
             return False
     
+    def create_manifest_mbdb(self, destination: str) -> bool:
+        """
+        Create Manifest.mbdb file (binary backup database)
+        
+        iOS backups use Manifest.mbdb (binary format) for older iOS versions
+        and Manifest.plist (XML format) for newer versions. Some versions of
+        idevicebackup2 require Manifest.mbdb even when Manifest.plist exists.
+        
+        Args:
+            destination: Directory to create Manifest.mbdb in
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            # Manifest.mbdb format:
+            # Header: "mbdb\x05\x00" (magic number + version 5)
+            # Followed by file entries (empty for MDM bypass)
+            mbdb_data = b'mbdb\x05\x00'
+            
+            mbdb_path = os.path.join(destination, "Manifest.mbdb")
+            with open(mbdb_path, 'wb') as f:
+                f.write(mbdb_data)
+            
+            print(f"[INFO] Created Manifest.mbdb at: {mbdb_path}")
+            return True
+            
+        except Exception as e:
+            print(f"[ERROR] Failed to create Manifest.mbdb: {e}")
+            return False
+    
     def create_status_plist(self, destination: str) -> bool:
         """
         Create Status.plist file indicating successful backup
@@ -216,6 +247,10 @@ class BackupRestorer:
             
             # Extract backup files into the UDID subdirectory
             if not self.extract_backup_archive(archive_path, mdmb_backup_dir):
+                return None
+            
+            # Create Manifest.mbdb (required by some idevicebackup2 versions)
+            if not self.create_manifest_mbdb(mdmb_backup_dir):
                 return None
             
             # Create Status.plist (required by idevicebackup2 restore)
