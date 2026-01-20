@@ -151,6 +151,21 @@ Pre-built Windows executable will be available in the Releases section.
 4. Verify device is in Recovery Mode (shows iTunes logo on screen)
 5. Restart MDMPatcher and reconnect device
 
+### pyusb / USB Detection Error
+
+**Problem**: Import error or "No backend available" when using pyusb
+
+**Solutions**:
+1. Install the libusb backend:
+   ```bash
+   pip install libusb1
+   ```
+2. Or manually download `libusb-1.0.dll` from [libusb releases](https://github.com/libusb/libusb/releases)
+3. Place the DLL in `C:\Windows\System32\` or the application folder
+4. Verify with: `python -c "import usb.core; print('OK')"`
+
+**Note**: This is now included in `requirements.txt`, so `pip install -r requirements.txt` will install it automatically.
+
 ### libimobiledevice Tools Not Found
 
 **Problem**: Error about missing `ideviceinfo` or `idevicebackup2`

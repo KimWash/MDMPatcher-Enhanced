@@ -6,13 +6,21 @@ Monitors USB connections and identifies iOS devices in Recovery/DFU mode.
 import time
 import threading
 from typing import Optional, Callable
+
+USB_AVAILABLE = False
+USB_ERROR_MESSAGE = None
+
 try:
     import usb.core
     import usb.util
     USB_AVAILABLE = True
-except ImportError:
-    USB_AVAILABLE = False
-    print("Warning: pyusb not available. USB detection will not work.")
+except ImportError as e:
+    USB_ERROR_MESSAGE = f"pyusb module not installed: {e}"
+    print(f"Warning: pyusb not available - {USB_ERROR_MESSAGE}")
+    print("Install with: pip install pyusb")
+except Exception as e:
+    USB_ERROR_MESSAGE = f"USB import error: {e}"
+    print(f"Warning: USB detection error - {USB_ERROR_MESSAGE}")
 
 
 class IOSDevice:
@@ -74,8 +82,13 @@ class USBDeviceWatcher:
     def start(self):
         """Start monitoring USB devices"""
         if not USB_AVAILABLE:
-            print("[ERROR] pyusb is not installed. Cannot monitor USB devices.")
-            print("[INFO] Install it with: pip install pyusb")
+            print("[ERROR] USB detection is not available.")
+            if USB_ERROR_MESSAGE:
+                print(f"[ERROR] Reason: {USB_ERROR_MESSAGE}")
+            print("[INFO] Install pyusb with: pip install pyusb")
+            print("[INFO] On Windows, you may also need libusb backend:")
+            print("[INFO]   - Download from: https://github.com/libusb/libusb/releases")
+            print("[INFO]   - Or install via: pip install libusb1")
             return
         
         if self._running:
@@ -107,8 +120,22 @@ class USBDeviceWatcher:
         """Check for connected iOS devices"""
         current_devices = {}
         
-        # Find all Apple devices
-        devices = usb.core.find(find_all=True, idVendor=self.APPLE_VENDOR_ID)
+        try:
+            # Find all Apple devices
+            devices = usb.core.find(find_all=True, idVendor=self.APPLE_VENDOR_ID)
+        except Exception as e:
+            # This can happen if libusb backend is not available on Windows
+            if "No backend available" in str(e) or "backend" in str(e).lower():
+                print(f"[ERROR] USB backend not available: {e}")
+                print("[INFO] On Windows, pyusb requires a libusb backend.")
+                print("[INFO] Solutions:")
+                print("[INFO]   1. Install libusb1: pip install libusb1")
+                print("[INFO]   2. Download libusb DLL from: https://github.com/libusb/libusb/releases")
+                print("[INFO]   3. Place libusb-1.0.dll in Windows/System32 or the app directory")
+                self._running = False  # Stop monitoring since it won't work
+            else:
+                print(f"[ERROR] USB detection error: {e}")
+            return
         
         for dev in devices:
             try:

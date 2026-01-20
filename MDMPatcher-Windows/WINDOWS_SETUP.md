@@ -196,6 +196,34 @@ If Windows SmartScreen blocks execution:
 
 ## Troubleshooting
 
+### pyusb Import Error (Windows-specific)
+
+**Error**: `ModuleNotFoundError: No module named 'usb'` or `No backend available`
+
+**Problem**: pyusb is installed but cannot find the libusb backend on Windows.
+
+**Solutions**:
+
+1. **Install libusb1 Python package** (Recommended):
+   ```cmd
+   pip install libusb1
+   ```
+
+2. **Or download libusb DLL manually**:
+   - Download from [libusb releases](https://github.com/libusb/libusb/releases)
+   - Extract `libusb-1.0.dll` from the archive
+   - Place it in one of these locations:
+     - `C:\Windows\System32\` (requires admin)
+     - Same folder as `main.py`
+     - Any folder in your PATH
+
+3. **Verify installation**:
+   ```cmd
+   python -c "import usb.core; print('pyusb OK')"
+   ```
+
+**Note**: This is a Windows-specific requirement. The `libusb1` package is now included in `requirements.txt`.
+
 ### Python Not Found
 
 **Error**: `'python' is not recognized as an internal or external command`
