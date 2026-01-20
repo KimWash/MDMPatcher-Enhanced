@@ -81,6 +81,10 @@ class RNCryptorDecryptor:
         ciphertext = data[34:-32]
         expected_hmac = data[-32:]
         
+        # Convert password to bytes if it's a string
+        if isinstance(password, str):
+            password = password.encode('utf-8')
+        
         # Derive keys using PBKDF2
         encryption_key = PBKDF2(
             password,
@@ -103,8 +107,9 @@ class RNCryptorDecryptor:
         h = HMAC.new(hmac_key, hmac_message, digestmod=SHA256)
         computed_hmac = h.digest()
         
-        # Compare HMACs
-        if computed_hmac != expected_hmac:
+        # Compare HMACs - use constant-time comparison
+        import secrets
+        if not secrets.compare_digest(computed_hmac, expected_hmac):
             raise ValueError("HMAC verification failed - incorrect password or corrupted data")
         
         # Decrypt using AES-256-CBC
