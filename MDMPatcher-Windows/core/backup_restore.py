@@ -176,18 +176,21 @@ class BackupRestorer:
             print(f"[ERROR] Failed to create Manifest.mbdb: {e}")
             return False
     
-    def create_status_plist(self, destination: str) -> bool:
+    def create_status_plist(self, destination: str, uuid: str) -> bool:
         """
         Create Status.plist file indicating successful backup
         
         Args:
             destination: Directory to create Status.plist in
+            uuid: Device UUID string for the UUID field
             
         Returns:
             True if successful, False otherwise
         """
         try:
-            status_content = '''<?xml version="1.0" encoding="UTF-8"?>
+            # Status.plist must have UUID field as <string> not <uuid>
+            # to avoid "UUID value not a string" error
+            status_content = f'''<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
@@ -199,6 +202,8 @@ class BackupRestorer:
 \t<false/>
 \t<key>SnapshotState</key>
 \t<string>finished</string>
+\t<key>UUID</key>
+\t<string>{uuid}</string>
 \t<key>Version</key>
 \t<string>2.4</string>
 </dict>
@@ -220,7 +225,8 @@ class BackupRestorer:
         temp_dir: str,
         archive_path: str,
         info_plist_path: str,
-        manifest_plist_path: str
+        manifest_plist_path: str,
+        udid: str
     ) -> Optional[str]:
         """
         Create complete backup structure ready for restoration
@@ -230,6 +236,7 @@ class BackupRestorer:
             archive_path: Path to decrypted backup archive (ZIP)
             info_plist_path: Path to customized Info.plist
             manifest_plist_path: Path to customized Manifest.plist
+            udid: Device UDID (for Status.plist UUID field)
             
         Returns:
             Path to backup directory or None if failed
@@ -254,7 +261,8 @@ class BackupRestorer:
                 return None
             
             # Create Status.plist (required by idevicebackup2 restore)
-            if not self.create_status_plist(mdmb_backup_dir):
+            # Must include UUID as <string> not <uuid> to avoid parsing errors
+            if not self.create_status_plist(mdmb_backup_dir, udid):
                 return None
             
             # Copy customized plists into the UDID subdirectory
@@ -320,7 +328,8 @@ class BackupWorkflow:
                 temp_dir,
                 decrypted_archive,
                 info_plist,
-                manifest_plist
+                manifest_plist,
+                udid  # Pass UDID for Status.plist UUID field
             )
             
             if not backup_dir:
