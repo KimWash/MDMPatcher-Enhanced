@@ -73,7 +73,8 @@ class BackupRestorer:
         self,
         backup_dir: str,
         udid: Optional[str] = None,
-        password: Optional[str] = None
+        password: Optional[str] = None,
+        source_udid: str = "MDMB"
     ) -> bool:
         """
         Restore backup to iOS device using idevicebackup2
@@ -82,6 +83,7 @@ class BackupRestorer:
             backup_dir: Path to backup directory
             udid: Optional device UDID
             password: Optional backup password
+            source_udid: Source UDID subdirectory name (default: "MDMB")
             
         Returns:
             True if successful, False otherwise
@@ -89,12 +91,16 @@ class BackupRestorer:
         try:
             print(f"[INFO] Starting backup restoration...")
             print(f"[INFO] Backup directory: {backup_dir}")
+            print(f"[INFO] Source UDID: {source_udid}")
             
             # Build command
             cmd = [self.idevicebackup2_path, "restore"]
             
             if udid:
                 cmd.extend(["-u", udid])
+            
+            # Add source UDID parameter (which subdirectory to use)
+            cmd.extend(["--source", source_udid])
             
             if password:
                 cmd.extend(["--password", password])
