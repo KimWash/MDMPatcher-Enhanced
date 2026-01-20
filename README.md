@@ -23,9 +23,14 @@
 
 ## Overview
 
-MDMPatcher Enhanced is a macOS tool that helps remove or bypass Mobile Device Management (MDM) profiles from supervised iPhones and iPads. It is designed for scenarios where users need to regain full control over a personally owned device — for example after second-hand purchases or faulty deregistration.
+MDMPatcher Enhanced helps remove or bypass Mobile Device Management (MDM) profiles from supervised iPhones and iPads. It is designed for scenarios where users need to regain full control over a personally owned device — for example after second-hand purchases or faulty deregistration.
 
 No jailbreak is required. No low-level kernel or firmware modifications are performed.
+
+### Platform Support
+
+- **macOS Version**: Original Swift-based application for macOS 10.13+ (Intel or Apple Silicon)
+- **Windows Version**: NEW! Python-based port for Windows 10/11 - See [MDMPatcher-Windows](MDMPatcher-Windows/README.md)
 
 ### Application Preview
 <img src="https://github.com/fled-dev/MDMPatcher-Enhanced/blob/5dcac8faab83e63f7c37747e81cd92ac2221386f/screenshots/app.png" style="width:70%;">
@@ -35,13 +40,27 @@ No jailbreak is required. No low-level kernel or firmware modifications are perf
 - **Bug fixes**
 - **Troubleshooting section added**
 - **Clarity improvements for restore & patching**
+- **NEW: Windows Port** - Full Python implementation for Windows 10/11
 
-## Requirements
+## Windows Users
+
+👉 **Looking for the Windows version?** Check out [MDMPatcher-Windows](MDMPatcher-Windows/) for the complete Windows port with:
+- Python-based implementation
+- PyQt6 modern GUI
+- USB device detection for Windows
+- Full feature parity with macOS version
+- Comprehensive setup guide
+
+See [Windows Installation Guide](MDMPatcher-Windows/WINDOWS_SETUP.md) for detailed instructions.
+
+## Requirements (macOS Version)
 - macOS 10.13+ (Intel or Apple Silicon)
 - iOS 15 to 18.5+
 - iPhone 5s to iPhone 16
 - All current iPads
 - IPSW file for your device (from [ipsw.me](https://ipsw.me))
+
+**For Windows users**: See [Windows Requirements](MDMPatcher-Windows/README.md#requirements)
 
 ## Instructions
 - Download the correct IPSW file for your device from [ipsw.me](https://ipsw.me).

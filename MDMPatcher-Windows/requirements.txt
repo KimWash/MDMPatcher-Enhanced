@@ -1,0 +1,12 @@
+# MDMPatcher Enhanced - Windows Edition
+# Python Dependencies
+
+# USB Device Detection
+pyusb>=1.2.1
+
+# USB Backend for Windows (required for pyusb to work on Windows)
+libusb1>=3.0.0
+
+# Cryptography
+pycryptodome>=3.19.0
+
