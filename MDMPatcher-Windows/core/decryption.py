@@ -7,6 +7,7 @@ import hashlib
 import hmac
 from Crypto.Cipher import AES
 from Crypto.Protocol.KDF import PBKDF2
+from Crypto.Hash import SHA1, SHA256
 
 
 class RNCryptorDecryptor:
@@ -87,7 +88,7 @@ class RNCryptorDecryptor:
             encryption_salt,
             dkLen=RNCryptorDecryptor.AES_KEY_SIZE,
             count=RNCryptorDecryptor.PBKDF2_ITERATIONS,
-            hmac_hash_module=hashlib.sha1
+            hmac_hash_module=SHA1
         )
         
         hmac_key = PBKDF2(
@@ -95,12 +96,13 @@ class RNCryptorDecryptor:
             hmac_salt,
             dkLen=RNCryptorDecryptor.HMAC_KEY_SIZE,
             count=RNCryptorDecryptor.PBKDF2_ITERATIONS,
-            hmac_hash_module=hashlib.sha1
+            hmac_hash_module=SHA1
         )
         
         # Verify HMAC
         hmac_message = data[:-32]  # Everything except the HMAC itself
-        computed_hmac = hmac.new(hmac_key, hmac_message, hashlib.sha256).digest()
+        h = hmac.new(hmac_key, hmac_message, SHA256)
+        computed_hmac = h.digest()
         
         if not hmac.compare_digest(computed_hmac, expected_hmac):
             raise ValueError("HMAC verification failed - incorrect password or corrupted data")
