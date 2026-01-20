@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import usb
 """
 MDMPatcher Enhanced - Windows Edition
 Main entry point for the application
