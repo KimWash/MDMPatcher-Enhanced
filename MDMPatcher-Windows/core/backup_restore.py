@@ -145,6 +145,45 @@ class BackupRestorer:
             print(f"[ERROR] Failed to restore backup: {e}")
             return False
     
+    def create_status_plist(self, destination: str) -> bool:
+        """
+        Create Status.plist file indicating successful backup
+        
+        Args:
+            destination: Directory to create Status.plist in
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            status_content = '''<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+\t<key>BackupState</key>
+\t<string>new</string>
+\t<key>Date</key>
+\t<date>2024-01-01T00:00:00Z</date>
+\t<key>IsFullBackup</key>
+\t<false/>
+\t<key>SnapshotState</key>
+\t<string>finished</string>
+\t<key>Version</key>
+\t<string>2.4</string>
+</dict>
+</plist>
+'''
+            status_path = os.path.join(destination, "Status.plist")
+            with open(status_path, 'w', encoding='utf-8') as f:
+                f.write(status_content)
+            
+            print(f"[INFO] Created Status.plist at: {status_path}")
+            return True
+            
+        except Exception as e:
+            print(f"[ERROR] Failed to create Status.plist: {e}")
+            return False
+    
     def create_backup_structure(
         self,
         temp_dir: str,
@@ -177,6 +216,10 @@ class BackupRestorer:
             
             # Extract backup files into the UDID subdirectory
             if not self.extract_backup_archive(archive_path, mdmb_backup_dir):
+                return None
+            
+            # Create Status.plist (required by idevicebackup2 restore)
+            if not self.create_status_plist(mdmb_backup_dir):
                 return None
             
             # Copy customized plists into the UDID subdirectory
