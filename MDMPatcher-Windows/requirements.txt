@@ -1,9 +1,6 @@
 # MDMPatcher Enhanced - Windows Edition
 # Python Dependencies
 
-# GUI Framework
-PyQt6>=6.6.0
-
 # USB Device Detection
 pyusb>=1.2.1
 

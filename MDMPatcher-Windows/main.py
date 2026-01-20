@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-import usb
 """
-MDMPatcher Enhanced - Windows Edition
-Main entry point for the application
+MDMPatcher Enhanced - Windows Edition (CLI)
+Command-line interface for MDM patching
 
 This tool helps remove or bypass Mobile Device Management (MDM) profiles 
 from supervised iPhones and iPads on Windows.
@@ -18,19 +17,17 @@ permission is prohibited and may be illegal.
 
 import sys
 import os
+import time
+import tempfile
 from pathlib import Path
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
+
 def check_dependencies():
     """Check if all required dependencies are installed"""
     missing = []
-    
-    try:
-        import PyQt6
-    except ImportError:
-        missing.append("PyQt6")
     
     try:
         import usb
@@ -88,7 +85,7 @@ def check_libimobiledevice():
 def show_legal_notice():
     """Display legal notice"""
     print("="*70)
-    print("MDMPatcher Enhanced - Windows Edition")
+    print("MDMPatcher Enhanced - Windows Edition (CLI)")
     print("="*70)
     print()
     print("⚠️  LEGAL & TECHNICAL DISCLAIMER")
@@ -120,6 +117,209 @@ def show_legal_notice():
     print()
 
 
+def wait_for_device():
+    """Wait for an iOS device to be connected in Recovery Mode"""
+    from core import USBDeviceWatcher, IOSDevice
+    
+    print("Waiting for iOS device in Recovery Mode...")
+    print("Please connect your device (Product ID: 4776 or 4779)")
+    print()
+    
+    device_found = [None]  # Use list to allow modification in closure
+    
+    def on_device_added(device: IOSDevice):
+        if device.is_recovery_mode():
+            print(f"\n✓ Device detected: {device}")
+            device_found[0] = device
+    
+    def on_device_removed(device: IOSDevice):
+        if device_found[0]:
+            print(f"\n✗ Device disconnected: {device}")
+            device_found[0] = None
+    
+    watcher = USBDeviceWatcher(
+        on_device_added=on_device_added,
+        on_device_removed=on_device_removed
+    )
+    watcher.start()
+    
+    # Wait for device
+    print("Monitoring USB... (Press Ctrl+C to cancel)")
+    try:
+        while not device_found[0]:
+            time.sleep(0.5)
+    except KeyboardInterrupt:
+        print("\n\nCancelled by user")
+        watcher.stop()
+        return None
+    
+    watcher.stop()
+    return device_found[0]
+
+
+def get_device_info():
+    """Get device information"""
+    from core import DeviceInfoExtractor
+    
+    print("\nFetching device information...")
+    
+    extractor = DeviceInfoExtractor()
+    info = extractor.get_device_info()
+    
+    if not info or not info.is_valid():
+        print("✗ Failed to retrieve device information")
+        return None
+    
+    print("\n" + "="*70)
+    print("DEVICE INFORMATION")
+    print("="*70)
+    print(info)
+    print("="*70)
+    
+    return info
+
+
+def confirm_patch(device_info):
+    """Ask user to confirm patching"""
+    print("\n⚠️  WARNING: This will restore a backup to your device!")
+    print("This action cannot be undone.")
+    print()
+    response = input("Do you want to continue? (yes/no): ")
+    
+    return response.lower() in ['yes', 'y']
+
+
+def execute_patch(device_info):
+    """Execute the patching process"""
+    from core import (
+        decrypt_template_file, PlistCustomizer, 
+        BackupWorkflow, RNCryptorDecryptor
+    )
+    
+    print("\n" + "="*70)
+    print("STARTING MDM PATCH PROCESS")
+    print("="*70)
+    
+    # Create temp directory
+    temp_dir = tempfile.mkdtemp(prefix="mdmpatcher_")
+    print(f"\nTemp directory: {temp_dir}")
+    
+    try:
+        # Get paths
+        app_dir = Path(__file__).parent
+        templates_dir = app_dir / "resources" / "templates"
+        
+        # Step 1: Decrypt template files
+        print("\n[1/4] Decrypting template files...")
+        
+        password = RNCryptorDecryptor.calculate_password()
+        
+        # Decrypt Info.plist template
+        info_template = templates_dir / "extension1.pdf"
+        info_decrypted = Path(temp_dir) / "info_template.plist"
+        
+        if not decrypt_template_file(str(info_template), str(info_decrypted), password):
+            print("✗ Failed to decrypt Info.plist template")
+            return False
+        
+        # Decrypt Manifest.plist template
+        manifest_template = templates_dir / "extension2.pdf"
+        manifest_decrypted = Path(temp_dir) / "manifest_template.plist"
+        
+        if not decrypt_template_file(str(manifest_template), str(manifest_decrypted), password):
+            print("✗ Failed to decrypt Manifest.plist template")
+            return False
+        
+        # Decrypt backup archive
+        archive_template = templates_dir / "libiMobileeDevice.dylib"
+        archive_decrypted = Path(temp_dir) / "backup_archive.zip"
+        
+        if not decrypt_template_file(str(archive_template), str(archive_decrypted), password):
+            print("✗ Failed to decrypt backup archive")
+            return False
+        
+        print("✓ Decryption completed!")
+        
+        # Step 2: Customize plists
+        print("\n[2/4] Customizing backup files...")
+        
+        # Read decrypted templates
+        with open(info_decrypted, 'r', encoding='utf-8') as f:
+            info_content = f.read()
+        
+        with open(manifest_decrypted, 'r', encoding='utf-8') as f:
+            manifest_content = f.read()
+        
+        # Customize Info.plist
+        info_output = Path(temp_dir) / "Info.plist"
+        if not PlistCustomizer.customize_info_plist_from_string(
+            info_content,
+            str(info_output),
+            device_info.build_version,
+            device_info.product_type,
+            device_info.serial_number,
+            device_info.udid,
+            device_info.imei
+        ):
+            print("✗ Failed to customize Info.plist")
+            return False
+        
+        # Customize Manifest.plist
+        manifest_output = Path(temp_dir) / "Manifest.plist"
+        if not PlistCustomizer.customize_manifest_plist_from_string(
+            manifest_content,
+            str(manifest_output),
+            device_info.build_version,
+            device_info.product_type,
+            device_info.serial_number,
+            device_info.udid
+        ):
+            print("✗ Failed to customize Manifest.plist")
+            return False
+        
+        print("✓ Plist customization completed!")
+        
+        # Step 3: Create backup structure
+        print("\n[3/4] Creating backup structure...")
+        
+        workflow = BackupWorkflow()
+        
+        # Step 4: Restore backup
+        print("\n[4/4] Restoring backup to device...")
+        print("This may take 2-5 minutes. Please wait...")
+        
+        success = workflow.execute_patch(
+            temp_dir,
+            str(archive_decrypted),
+            str(info_output),
+            str(manifest_output),
+            device_info.udid
+        )
+        
+        if success:
+            print("\n" + "="*70)
+            print("✓ SUCCESS!")
+            print("="*70)
+            print("\nMDM has been successfully patched on your device!")
+            print("Your device will now reboot.")
+            print("\nPlease complete the setup process on your device.")
+            print("Have fun :-)")
+            print()
+            return True
+        else:
+            print("\n✗ Backup restoration failed")
+            return False
+            
+    except Exception as e:
+        print(f"\n✗ Error during patching: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+    finally:
+        # Cleanup is handled by BackupWorkflow
+        pass
+
+
 def main():
     """Main application entry point"""
     # Show legal notice
@@ -137,24 +337,51 @@ def main():
     # Check libimobiledevice (warning only, not fatal)
     if not check_libimobiledevice():
         print("\n⚠️  Warning: libimobiledevice tools not found")
-        print("The application will start, but device operations will fail.")
+        print("The application will not work without these tools.")
         response = input("\nContinue anyway? (y/N): ")
         if response.lower() != 'y':
             sys.exit(1)
     else:
         print("✓ libimobiledevice tools OK")
     
-    print("\nStarting MDMPatcher Enhanced...\n")
+    print()
     
-    # Start GUI
-    try:
-        from ui import main as ui_main
-        ui_main()
-    except Exception as e:
-        print(f"\nFATAL ERROR: {e}")
-        import traceback
-        traceback.print_exc()
-        input("Press Enter to exit...")
+    # Wait for device
+    device = wait_for_device()
+    if not device:
+        sys.exit(1)
+    
+    # Get device info
+    device_info = get_device_info()
+    if not device_info:
+        print("\nError: Could not retrieve device information")
+        print("Please make sure:")
+        print("  1. Device is unlocked")
+        print("  2. You tapped 'Trust' on the device")
+        print("  3. libimobiledevice tools are installed")
+        input("\nPress Enter to exit...")
+        sys.exit(1)
+    
+    # Confirm patch
+    if not confirm_patch(device_info):
+        print("\nOperation cancelled by user")
+        sys.exit(0)
+    
+    # Execute patch
+    success = execute_patch(device_info)
+    
+    if success:
+        print("\nPatching completed successfully!")
+        input("\nPress Enter to exit...")
+        sys.exit(0)
+    else:
+        print("\nPatching failed!")
+        print("Please check the error messages above.")
+        print("You may need to:")
+        print("  1. Reboot your device")
+        print("  2. Re-enter Recovery Mode")
+        print("  3. Try again")
+        input("\nPress Enter to exit...")
         sys.exit(1)
 
 

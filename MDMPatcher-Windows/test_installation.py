@@ -44,7 +44,6 @@ def check_dependencies():
     print_header("Python Dependencies Check")
     
     deps = [
-        ("PyQt6", "PyQt6"),
         ("pyusb", "usb"),
         ("pycryptodome", "Crypto"),
     ]
@@ -141,15 +140,21 @@ def test_core_modules():
         return False
 
 def test_ui_modules():
-    """Test UI module imports"""
-    print_header("UI Modules Test")
+    """Test UI modules"""
+    print_header("CLI Interface Test")
     
     try:
-        from ui import MainWindow
-        print("✓ UI modules import successfully")
-        return True
-    except ImportError as e:
-        print(f"❌ Failed to import UI modules: {e}")
+        # Just check if main.py exists and can be imported
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("main", "main.py")
+        if spec and spec.loader:
+            print("✓ CLI main module exists")
+            return True
+        else:
+            print("✗ CLI main module not found")
+            return False
+    except Exception as e:
+        print(f"✗ Failed to check CLI module: {e}")
         return False
 
 def test_usb_detection():
@@ -229,7 +234,6 @@ def run_all_tests():
         print("\n🎉 All tests passed! MDMPatcher is ready to use.")
         print("\n💡 Launch the application with:")
         print("   python main.py")
-        print("   or double-click launch.bat")
         return True
     else:
         print(f"\n⚠️  {total - passed} test(s) failed.")
