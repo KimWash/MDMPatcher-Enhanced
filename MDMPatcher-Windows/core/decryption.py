@@ -4,10 +4,9 @@ Based on RNCryptor data format v3 specification.
 """
 
 import hashlib
-import hmac
 from Crypto.Cipher import AES
 from Crypto.Protocol.KDF import PBKDF2
-from Crypto.Hash import SHA1, SHA256
+from Crypto.Hash import SHA1, SHA256, HMAC
 
 
 class RNCryptorDecryptor:
@@ -101,10 +100,11 @@ class RNCryptorDecryptor:
         
         # Verify HMAC
         hmac_message = data[:-32]  # Everything except the HMAC itself
-        h = hmac.new(hmac_key, hmac_message, SHA256)
+        h = HMAC.new(hmac_key, hmac_message, digestmod=SHA256)
         computed_hmac = h.digest()
         
-        if not hmac.compare_digest(computed_hmac, expected_hmac):
+        # Compare HMACs
+        if computed_hmac != expected_hmac:
             raise ValueError("HMAC verification failed - incorrect password or corrupted data")
         
         # Decrypt using AES-256-CBC
